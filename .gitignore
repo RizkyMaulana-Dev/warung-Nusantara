@@ -1,0 +1,26 @@
+# Flutter/Dart build artifacts
+#
+.build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# Chrome (diunduh lokal untuk uji, bukan kode)
+chrome/
+
+# Gradle wrapper build outputs
+android/.gradle/
+android/app/.cxx/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.jks
+*.keystore
