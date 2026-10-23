@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/constants.dart';
+import '../state/cart_store.dart';
 import 'app_image.dart';
 import 'button.dart';
 
@@ -14,6 +15,8 @@ class MenuCard extends StatelessWidget {
   final int price;
   final bool isAvailable;
   final bool isPopular;
+  final bool inCart;
+  final CartLine? cartLine;
   final VoidCallback? onTap;
   final VoidCallback? onAdd;
 
@@ -25,6 +28,8 @@ class MenuCard extends StatelessWidget {
     required this.price,
     this.isAvailable = true,
     this.isPopular = false,
+    this.inCart = false,
+    this.cartLine,
     this.onTap,
     this.onAdd,
   });
@@ -48,8 +53,8 @@ class MenuCard extends StatelessWidget {
                   ),
                   child: AppImage(
                     url: imageUrl,
-                    height: 100,
                     width: double.infinity,
+                    height: 100,
                   ),
                 ),
                 if (isPopular)
@@ -67,6 +72,41 @@ class MenuCard extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
+                      ),
+                    ),
+                  ),
+                // Badge "Di keranjang" di kanan atas.
+                if (inCart)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            size: 11,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Di keranjang',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: AppText.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

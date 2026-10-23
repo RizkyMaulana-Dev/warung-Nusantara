@@ -9,12 +9,25 @@ import '../../widgets/cart_item.dart';
 import '../../widgets/empty_state.dart';
 import '../cabang/cabang_model.dart';
 import '../checkout/checkout_page.dart';
+import '../menu/detail_menu_page.dart';
 
 /// Keranjang: item nyata dari state bersama, ongkir, dan tombol Checkout.
 class CartPage extends StatelessWidget {
   final Cabang? cabangTerpilih;
 
   const CartPage({super.key, this.cabangTerpilih});
+
+  void _bukaEdit(BuildContext context, CartLine line) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DetailMenuPage(
+          menu: line.produk,
+          cabangTerpilih: cabangTerpilih,
+          editLine: line,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +83,7 @@ class CartPage extends StatelessWidget {
                                 AppMessages.itemDihapusKeranjang,
                               );
                             },
+                            onEdit: () => _bukaEdit(context, line),
                           );
                         },
                       ),

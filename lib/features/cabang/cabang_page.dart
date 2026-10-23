@@ -411,15 +411,41 @@ class _CabangPageState extends State<CabangPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.s12),
       color: AppColors.primaryTint,
-      child: Text(
-        'Cabang terdekat sudah dipilih otomatis. Kamu bisa pilih cabang lain.',
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 12,
-          fontWeight: AppText.w600,
-          color: AppColors.primary,
-          height: 1.4,
-        ),
-        textAlign: TextAlign.center,
+      child: Column(
+        children: [
+          Text(
+            'Cabang terdekat sudah dipilih otomatis. Kamu bisa pilih cabang lain.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: AppText.w600,
+              color: AppColors.primary,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                _cabangTerpilih = _daftarCabang.first;
+              });
+            },
+            icon: const Icon(Icons.near_me, size: 16, color: AppColors.primary),
+            label: Text(
+              'Pilih otomatis (terdekat)',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: AppText.w800,
+                color: AppColors.primary,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              minimumSize: const Size(44, 32),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/constants.dart';
+import '../state/pengaturan_store.dart';
 
 /// Gambar jaringan dengan placeholder, cache decode kecil, dan fallback lokal.
 class AppImage extends StatelessWidget {
@@ -29,13 +30,18 @@ class AppImage extends StatelessWidget {
   Widget build(BuildContext context) {
     if (url.isEmpty) return _fallback();
 
+    // Mode hemat data: decode gambar di resolusi lebih kecil.
+    final hemat = PengaturanStore.instance.hematData;
+    final lebarCache = hemat ? (cacheWidth ~/ 2) : cacheWidth;
+    final tinggiCache = hemat ? (cacheHeight ~/ 2) : cacheHeight;
+
     return Image.network(
       url,
       width: width,
       height: height,
       fit: fit,
-      cacheWidth: cacheWidth,
-      cacheHeight: cacheHeight,
+      cacheWidth: lebarCache,
+      cacheHeight: tinggiCache,
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;
         return Container(

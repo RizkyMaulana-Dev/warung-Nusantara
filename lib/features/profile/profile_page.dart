@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants.dart';
 import '../../core/messages.dart';
+import '../../state/loyalty_point_store.dart';
 import '../../state/voucher_store.dart';
 import '../../widgets/button.dart';
 import '../alamat/alamat_page.dart';
@@ -30,12 +31,12 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String _nama = 'Pengguna Contoh';
   String _nomorHP = '+62 812-3456-7890';
-  int _poin = 120;
 
   @override
   void initState() {
     super.initState();
     _muatData();
+    LoyaltyPointStore.instance.muat();
   }
 
   Future<void> _muatData() async {
@@ -47,7 +48,6 @@ class _ProfilePageState extends State<ProfilePage> {
           prefs.getString('nomor_hp') ??
           prefs.getString('email') ??
           '+62 812-3456-7890';
-      _poin = prefs.getInt('poin') ?? 120;
     });
   }
 
@@ -73,7 +73,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (konfirmasi == true && mounted) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_logged_in', false);
-
+      // Jangan reset is_first_launch: Welcome hanya untuk peluncuran pertama.
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -170,19 +170,22 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _tukarPoin() async {
+    final store = LoyaltyPointStore.instance;
     final konfirmasi = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Tukar poin'),
         content: Text(
-          _poin >= 100 ? 'Tukar 100 poin dengan voucher potongan Rp 10.000?' : 'Poin kamu belum cukup. Kumpulkan minimal 100 poin dengan terus memesan.',
+          store.cukupTukar
+              ? 'Tukar 100 poin dengan voucher potongan Rp 10.000?'
+              : 'Poin kamu belum cukup. Kumpulkan minimal 100 poin dengan terus memesan.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Nanti'),
           ),
-          if (_poin >= 100)
+          if (store.cukupTukar)
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Tukar'),
@@ -192,9 +195,8 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     if (konfirmasi == true) {
-      setState(() => _poin -= 100);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('poin', _poin);
+      // Poin hilang langsung saat dipakai (100 poin → voucher Rp 10.000).
+      store.kurangi(100);
       VoucherStore.instance.tambahVoucherPoin();
       if (!mounted) return;
       showAppMessage(
@@ -291,49 +293,55 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             const SizedBox(height: AppSpacing.s28),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.s16),
-              decoration: BoxDecoration(
-                color: AppColors.primaryTint,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.star, color: AppColors.accent, size: 32),
-                  const SizedBox(width: AppSpacing.s14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Poin Loyalitas',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: AppText.w800,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '$_poin poin',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 18,
-                            fontWeight: AppText.w800,
-                            color: AppColors.text,
-                          ),
-                        ),
-                      ],
-                    ),
+            AnimatedBuilder(
+              animation: LoyaltyPointStore.instance,
+              builder: (context, _) {
+                final poin = LoyaltyPointStore.instance.poin;
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.s16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryTint,
+                    borderRadius: BorderRadius.circular(18),
                   ),
-                  SmallButton(
-                    text: 'Tukar',
-                    backgroundColor: AppColors.accent,
-                    textColor: AppColors.onAccent,
-                    onPressed: _tukarPoin,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.star, color: AppColors.accent, size: 32),
+                      const SizedBox(width: AppSpacing.s14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Poin Loyalitas',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: AppText.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$poin poin',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: AppText.w800,
+                                color: AppColors.text,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SmallButton(
+                        text: 'Tukar',
+                        backgroundColor: AppColors.accent,
+                        textColor: AppColors.onAccent,
+                        onPressed: poin >= 100 ? _tukarPoin : null,
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(height: AppSpacing.s24),
             _buildMenuItem(

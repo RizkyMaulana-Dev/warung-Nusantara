@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants.dart';
 import '../../core/messages.dart';
+import '../../state/pengaturan_store.dart';
 
 /// Pengaturan notifikasi dan preferensi aplikasi.
 class PengaturanPage extends StatefulWidget {
@@ -14,29 +14,25 @@ class PengaturanPage extends StatefulWidget {
 }
 
 class _PengaturanPageState extends State<PengaturanPage> {
-  bool _notifPromo = true;
-  bool _notifPesanan = true;
-  bool _hematData = false;
+  final PengaturanStore _store = PengaturanStore.instance;
 
-  @override
-  void initState() {
-    super.initState();
-    _muat();
+  void _ubahPromo(bool nilai) {
+    _store.setNotifPromo(nilai);
+    setState(() {});
   }
 
-  Future<void> _muat() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _notifPromo = prefs.getBool('notif_promo') ?? true;
-      _notifPesanan = prefs.getBool('notif_pesanan') ?? true;
-      _hematData = prefs.getBool('hemat_data') ?? false;
-    });
+  void _ubahPesanan(bool nilai) {
+    _store.setNotifPesanan(nilai);
+    setState(() {});
   }
 
-  Future<void> _simpan(String kunci, bool nilai) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(kunci, nilai);
+  void _ubahHematData(bool nilai) {
+    _store.setHematData(nilai);
+    setState(() {});
+    showAppMessage(
+      context,
+      nilai ? 'Mode hemat data aktif.' : 'Mode hemat data dimatikan.',
+    );
   }
 
   void _bukaInfo(String judul, String isi) {
@@ -80,35 +76,22 @@ class _PengaturanPageState extends State<PengaturanPage> {
           _buildSwitch(
             title: 'Promo dan voucher',
             subtitle: 'Info diskon terbaru dari warung.',
-            value: _notifPromo,
-            onChanged: (nilai) {
-              setState(() => _notifPromo = nilai);
-              _simpan('notif_promo', nilai);
-            },
+            value: _store.notifPromo,
+            onChanged: _ubahPromo,
           ),
           _buildSwitch(
             title: 'Status pesanan',
             subtitle: 'Kabar saat pesanan dikonfirmasi dan diantar.',
-            value: _notifPesanan,
-            onChanged: (nilai) {
-              setState(() => _notifPesanan = nilai);
-              _simpan('notif_pesanan', nilai);
-            },
+            value: _store.notifPesanan,
+            onChanged: _ubahPesanan,
           ),
           const SizedBox(height: AppSpacing.s20),
           _judulBagian('Aplikasi'),
           _buildSwitch(
             title: 'Hemat data',
             subtitle: 'Muat gambar menu dengan kualitas lebih ringan.',
-            value: _hematData,
-            onChanged: (nilai) {
-              setState(() => _hematData = nilai);
-              _simpan('hemat_data', nilai);
-              showAppMessage(
-                context,
-                nilai ? 'Mode hemat data aktif.' : 'Mode hemat data dimatikan.',
-              );
-            },
+            value: _store.hematData,
+            onChanged: _ubahHematData,
           ),
           const SizedBox(height: AppSpacing.s8),
           _buildInfoTile(
@@ -118,7 +101,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
               'Warung Nusantara',
               'Aplikasi pemesanan makanan untuk UMKM lokal. '
                   'Pesan menu favorit, pilih cabang terdekat, dan pantau '
-                  'status pesanan langsung dari HP.\n\nVersi 1.0.0',
+                  'status pesanan langsung dari HP.\n\nVersi 1.0.3',
             ),
           ),
           _buildInfoTile(
@@ -133,7 +116,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
           ),
           const Divider(height: 32, color: AppColors.divider),
           Text(
-            'Versi aplikasi 1.0.0',
+            'Versi aplikasi 1.0.3',
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11,

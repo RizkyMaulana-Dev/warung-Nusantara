@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/messages.dart';
 import '../../widgets/bottom_nav.dart';
 import '../cabang/cabang_model.dart';
+import '../cabang/cabang_page.dart';
 import '../home/home_page.dart';
 import '../menu/menu_page.dart';
 import '../pesanan/pesanan_page.dart';
@@ -39,6 +41,7 @@ class _MainShellState extends State<MainShell> {
         onLihatSemuaMenu: () {
           setState(() => _index = 1);
         },
+        onGantiCabang: _bukaPilihCabang,
       ),
       MenuPage(cabangTerpilih: _cabang),
       PesananPage(
@@ -57,7 +60,25 @@ class _MainShellState extends State<MainShell> {
       _bangunHalaman();
       _index = 3;
     });
+    // Simpan pilihan cabang supaya tetap dipakai saat aplikasi dibuka lagi.
+    _simpanCabang(cabang.id);
     showAppMessage(context, 'Cabang diganti ke ${cabang.nama}.');
+  }
+
+  Future<void> _simpanCabang(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cabang_id', id);
+    } catch (_) {
+      // Preferensi non-kritis: abaikan bila gagal.
+    }
+  }
+
+  void _bukaPilihCabang() async {
+    final cabang = await Navigator.of(context).push<Cabang>(
+      MaterialPageRoute(builder: (_) => CabangPage(cabangAwal: _cabang)),
+    );
+    if (cabang != null && mounted) _gantiCabang(cabang);
   }
 
   @override

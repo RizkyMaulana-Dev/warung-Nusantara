@@ -5,17 +5,18 @@ import '../../core/constants.dart';
 import '../../core/messages.dart';
 import '../../state/alamat_store.dart';
 import '../../state/cart_store.dart';
+import '../../state/loyalty_point_store.dart';
 import '../../state/metode_bayar_store.dart';
 import '../../state/order_store.dart';
 import '../../state/voucher_store.dart';
 import '../../widgets/bottom_action_bar.dart';
 import '../../widgets/button.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/voucher_drawer.dart';
 import '../alamat/alamat_page.dart';
 import '../cabang/cabang_model.dart';
 import '../pembayaran/metode_pembayaran_page.dart';
 import '../tracking/tracking_page.dart';
-import '../voucher/voucher_page.dart';
 
 /// Checkout: pilih alamat, pembayaran, voucher, lalu buat pesanan.
 class CheckoutPage extends StatefulWidget {
@@ -25,6 +26,11 @@ class CheckoutPage extends StatefulWidget {
 
   @override
   State<CheckoutPage> createState() => _CheckoutPageState();
+}
+
+String _poinPesan(String dasar, int total) {
+  final poin = (total / 1000).floor();
+  return poin > 0 ? '$dasar Kamu dapat $poin poin loyalitas.' : dasar;
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
@@ -138,9 +144,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
     cart.kosongkan();
     if (voucher != null) VoucherStore.instance.hapus();
 
+    // Bonus poin loyalitas (1 poin / Rp 1.000, bergantung bobot transaksi).
+    LoyaltyPointStore.instance.tambahDariTotal(total);
+
     if (!mounted) return;
     setState(() => _memproses = false);
-    showAppMessage(context, AppMessages.pembayaranBerhasil);
+    showAppMessage(
+      context,
+      _poinPesan(AppMessages.pembayaranBerhasil, total),
+    );
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) =>
@@ -418,7 +430,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             color: AppColors.textSecondary,
             size: 20,
           ),
-          onTap: () => _bukaKelola(const VoucherPage()),
+          onTap: () => bukaVoucherDrawer(context, CartStore.instance),
         ),
       );
     }
@@ -451,12 +463,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
               ),
               TextButton(
-                onPressed: () => VoucherStore.instance.hapus(),
+                onPressed: () => bukaVoucherDrawer(context, CartStore.instance),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 36),
                 ),
-                child: const Text('Hapus'),
+                child: const Text('Ubah'),
               ),
             ],
           ),

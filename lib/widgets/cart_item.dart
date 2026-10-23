@@ -11,9 +11,10 @@ class CartItem extends StatelessWidget {
   final String options;
   final int price;
   final int quantity;
-  final VoidCallback onIncrease;
-  final VoidCallback onDecrease;
+  final VoidCallback? onIncrease;
+  final VoidCallback? onDecrease;
   final VoidCallback? onRemove;
+  final VoidCallback? onEdit;
 
   const CartItem({
     super.key,
@@ -25,17 +26,22 @@ class CartItem extends StatelessWidget {
     required this.onIncrease,
     required this.onDecrease,
     this.onRemove,
+    this.onEdit,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Gambar 64x64 radius 12
+      elevation: 0,
+      child: InkWell(
+        onTap: onEdit,
+        borderRadius: BorderRadius.circular(AppSize.listItemRadius),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Gambar 64x64 radius 12
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: AppImage(
@@ -118,7 +124,8 @@ class CartItem extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildStepper() {

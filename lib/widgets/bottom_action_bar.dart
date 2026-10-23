@@ -30,13 +30,7 @@ class BottomActionBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.primary,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        // Box shadow dihapus: ikon dan tombol tetap rapi (flat).
       ),
       child: SafeArea(
         top: false,

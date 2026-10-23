@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants.dart';
 import '../../widgets/app_image.dart';
 import '../../widgets/button.dart';
+import '../cabang/cabang_model.dart';
 import '../cabang/cabang_service.dart';
 import '../login/login_page.dart';
 
@@ -13,7 +14,9 @@ import '../login/login_page.dart';
 /// Pemilihan cabang otomatis (default cabang-1) supaya user tidak perlu
 /// memilih dulu; bisa ganti nanti lewat Profil → Ganti Cabang.
 class WelcomePage extends StatefulWidget {
-  const WelcomePage({super.key});
+  final Cabang? cabangTerpilih;
+
+  const WelcomePage({super.key, this.cabangTerpilih});
 
   @override
   State<WelcomePage> createState() => _WelcomePageState();
@@ -48,20 +51,31 @@ class _WelcomePageState extends State<WelcomePage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Ilustrasi dari internet dengan fallback otomatis
+            // Slide pertama: latar hijau + logo aplikasi (frame terakhir GIF).
+            // Slide lain: ilustrasi dari internet dengan fallback otomatis.
             Expanded(
               flex: 2,
               child: Container(
                 width: double.infinity,
-                color: AppColors.primaryTint,
-                child: AppImage(
-                  url: slide['gambar']!,
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
-                  fallbackIcon: Icons.restaurant_menu,
-                  fallbackIconSize: 80,
-                ),
+                color: _halamanSaatIni == 0
+                    ? AppColors.primary
+                    : AppColors.primaryTint,
+                child: _halamanSaatIni == 0
+                    ? Padding(
+                        padding: const EdgeInsets.all(AppSpacing.s24),
+                        child: Image.asset(
+                          'assets/splash/app_icon_source.png',
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                    : AppImage(
+                        url: slide['gambar']!,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        fallbackIcon: Icons.restaurant_menu,
+                        fallbackIconSize: 80,
+                      ),
               ),
             ),
             // Indikator halaman (3 titik)
@@ -169,7 +183,8 @@ class _WelcomePageState extends State<WelcomePage> {
 
     // Navigasi DULU agar SharedPreferences yang lambat/hang di HP
     // tidak pernah menahan pengguna di Welcome.
-    final cabangTerpilih = CabangService().getCabangById('cabang-1');
+    final cabangTerpilih =
+        widget.cabangTerpilih ?? CabangService().getCabangById('cabang-1');
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => LoginPage(cabangTerpilih: cabangTerpilih),

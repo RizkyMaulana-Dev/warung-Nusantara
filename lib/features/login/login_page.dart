@@ -35,15 +35,21 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _muatPreferensi() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    final ingat = prefs.getBool('ingat_saya') ?? false;
-    setState(() {
-      _ingatSaya = ingat;
-      if (ingat) {
-        _emailController.text = prefs.getString('email_tersimpan') ?? '';
-      }
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 5));
+      if (!mounted) return;
+      final ingat = prefs.getBool('ingat_saya') ?? false;
+      setState(() {
+        _ingatSaya = ingat;
+        if (ingat) {
+          _emailController.text = prefs.getString('email_tersimpan') ?? '';
+        }
+      });
+    } catch (e) {
+      // Jangan biarkan kegagalan baca preferensi menjadi unhandled exception.
+      debugPrint('Login muat preferensi error: $e');
+    }
   }
 
   @override
@@ -63,20 +69,16 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!mounted) return;
 
-    // Navigasi DULU agar SharedPreferences yang lambat/hang di HP
-    // tidak pernah menahan pengguna di Login.
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => MainShell(cabangTerpilih: widget.cabangTerpilih),
-      ),
-    );
+    final email = _emailController.text.trim();
 
-    // Simpan preferensi setelahnya (tidak menahan UI).
+    // Simpan sesi LEBIH DULU, baru navigasi. Dengan begitu aplikasi yang
+    // langsung ditutup setelah login tetap membuka Beranda saat dibuka lagi.
     try {
       final prefs = await SharedPreferences.getInstance()
           .timeout(const Duration(seconds: 5));
-      final email = _emailController.text.trim();
       await prefs.setBool('is_logged_in', true);
+      // Sudah pernah login → Welcome tidak perlu muncul lagi.
+      await prefs.setBool('is_first_launch', false);
       await prefs.setString('email', email);
       await prefs.setBool('ingat_saya', _ingatSaya);
       if (_ingatSaya) {
@@ -89,8 +91,22 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString('nama_pengguna', 'Pengguna Contoh');
       }
     } catch (e, st) {
-      debugPrint('Login prefs save (non-blocking): $e\n$st');
+      debugPrint('Login prefs save error: $e\n$st');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      showAppMessage(
+        context,
+        'Gagal menyimpan sesi login. Pastikan penyimpanan HP tidak penuh, lalu coba lagi.',
+      );
+      return;
     }
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => MainShell(cabangTerpilih: widget.cabangTerpilih),
+      ),
+    );
   }
 
   Future<void> _masukGoogle() async {
@@ -98,17 +114,12 @@ class _LoginPageState extends State<LoginPage> {
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
 
-    // Navigasi DULU; preferensi disimpan setelahnya tanpa menahan UI.
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => MainShell(cabangTerpilih: widget.cabangTerpilih),
-      ),
-    );
-
+    // Simpan sesi dulu, baru navigasi (sama seperti login email).
     try {
       final prefs = await SharedPreferences.getInstance()
           .timeout(const Duration(seconds: 5));
       await prefs.setBool('is_logged_in', true);
+      await prefs.setBool('is_first_launch', false);
       final namaTersimpan = prefs.getString('nama_pengguna');
       if (namaTersimpan == null || namaTersimpan.trim().isEmpty) {
         await prefs.setString('nama_pengguna', 'Pengguna Google');
@@ -119,8 +130,22 @@ class _LoginPageState extends State<LoginPage> {
         email.isEmpty ? 'pengguna@gmail.com' : email,
       );
     } catch (e, st) {
-      debugPrint('Login Google prefs save (non-blocking): $e\n$st');
+      debugPrint('Login Google prefs save error: $e\n$st');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      showAppMessage(
+        context,
+        'Gagal menyimpan sesi login. Pastikan penyimpanan HP tidak penuh, lalu coba lagi.',
+      );
+      return;
     }
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => MainShell(cabangTerpilih: widget.cabangTerpilih),
+      ),
+    );
   }
 
   @override

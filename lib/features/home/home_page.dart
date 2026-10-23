@@ -22,8 +22,9 @@ import '../menu/menu_page.dart';
 class BerandaPage extends StatefulWidget {
   final Cabang? cabangTerpilih;
   final VoidCallback? onLihatSemuaMenu;
+  final VoidCallback? onGantiCabang;
 
-  const BerandaPage({super.key, this.cabangTerpilih, this.onLihatSemuaMenu});
+  const BerandaPage({super.key, this.cabangTerpilih, this.onLihatSemuaMenu, this.onGantiCabang});
 
   @override
   State<BerandaPage> createState() => _BerandaPageState();
@@ -109,10 +110,20 @@ class _BerandaPageState extends State<BerandaPage>
   }
 
   void _bukaDetail(MenuProduk menu) {
+    // Jika menu sudah di keranjang, buka detail untuk edit addon/catatan.
+    final line = CartStore.instance.lines
+        .cast<CartLine?>()
+        .firstWhere(
+          (l) => l?.produk.id == menu.id,
+          orElse: () => null,
+        );
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            DetailMenuPage(menu: menu, cabangTerpilih: widget.cabangTerpilih),
+        builder: (_) => DetailMenuPage(
+          menu: menu,
+          cabangTerpilih: widget.cabangTerpilih,
+          editLine: line,
+        ),
       ),
     );
   }
@@ -157,14 +168,17 @@ class _BerandaPageState extends State<BerandaPage>
             opacity: _animasiHasil,
             sliver: menuTampil.isEmpty
                 ? SliverToBoxAdapter(child: _buildKosong())
-                : SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.s20,
-                      0,
-                      AppSpacing.s20,
-                      AppSpacing.s24,
-                    ),
-                    sliver: SliverGrid(
+                : AnimatedBuilder(
+                    animation: CartStore.instance,
+                    builder: (context, _) {
+                      return SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.s20,
+                          0,
+                          AppSpacing.s20,
+                          AppSpacing.s24,
+                        ),
+                        sliver: SliverGrid(
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
@@ -174,6 +188,12 @@ class _BerandaPageState extends State<BerandaPage>
                           ),
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final menu = menuTampil[index];
+                        final line = CartStore.instance.lines
+                            .cast<CartLine?>()
+                            .firstWhere(
+                              (l) => l?.produk.id == menu.id,
+                              orElse: () => null,
+                            );
                         return MenuCard(
                           imageUrl: menu.imageUrl,
                           name: menu.nama,
@@ -181,13 +201,17 @@ class _BerandaPageState extends State<BerandaPage>
                           price: menu.harga,
                           isAvailable: menu.tersedia,
                           isPopular: menu.populer,
+                          inCart: line != null,
+                          cartLine: line,
                           onTap: menu.tersedia ? () => _bukaDetail(menu) : null,
                           onAdd: menu.tersedia
                               ? () => _tambahKeKeranjang(menu)
                               : null,
                         );
                       }, childCount: menuTampil.length),
-                    ),
+                        ),
+                      );
+                    },
                   ),
           ),
         ],
@@ -196,6 +220,7 @@ class _BerandaPageState extends State<BerandaPage>
   }
 
   Widget _buildHeader() {
+    final namaCabang = widget.cabangTerpilih?.nama ?? 'Cabang terdekat';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s20),
       child: Row(
@@ -205,27 +230,44 @@ class _BerandaPageState extends State<BerandaPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.store,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        widget.cabangTerpilih?.nama ?? 'Cabang terdekat',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: AppText.w600,
+                InkWell(
+                  onTap: widget.onGantiCabang,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.store,
+                          size: 14,
                           color: AppColors.textSecondary,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            namaCabang,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: AppText.w600,
+                              color: AppColors.textSecondary,
+                              decoration: widget.onGantiCabang != null
+                                  ? TextDecoration.underline
+                                  : TextDecoration.none,
+                              decorationColor: AppColors.primary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (widget.onGantiCabang != null)
+                          const Icon(
+                            Icons.chevron_right,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.s6),
                 Text(
@@ -457,7 +499,10 @@ class _BerandaPageState extends State<BerandaPage>
                 ),
                 selected: isAktif,
                 onSelected: (_) {
-                  setState(() => _kategoriDipilih = kategori);
+                  setState(() {
+                    // Toggle: ketuk kategori yang sama → reset ke "Semua"
+                    _kategoriDipilih = isAktif ? 'Semua' : kategori;
+                  });
                   _pudarkanHasil();
                 },
                 backgroundColor: AppColors.surfaceSoft,

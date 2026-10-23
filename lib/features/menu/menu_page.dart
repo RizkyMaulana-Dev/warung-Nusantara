@@ -121,37 +121,53 @@ class _MenuPageState extends State<MenuPage>
             opacity: _animasiHasil,
             sliver: hasil.isEmpty
                 ? SliverToBoxAdapter(child: _buildKosong())
-                : SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.s20,
-                      0,
-                      AppSpacing.s20,
-                      AppSpacing.s24,
-                    ),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            mainAxisExtent: 240,
+                : AnimatedBuilder(
+                    animation: CartStore.instance,
+                    builder: (context, _) {
+                      return SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.s20,
+                          0,
+                          AppSpacing.s20,
+                          AppSpacing.s24,
+                        ),
+                        sliver: SliverGrid(
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              mainAxisExtent: 240,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                              final menu = hasil[index];
+                              final line = CartStore.instance.lines
+                                  .cast<CartLine?>()
+                                  .firstWhere(
+                                    (l) => l?.produk.id == menu.id,
+                                    orElse: () => null,
+                                  );
+                              return MenuCard(
+                                imageUrl: menu.imageUrl,
+                                name: menu.nama,
+                                portion: menu.takaran,
+                                price: menu.harga,
+                                isAvailable: menu.tersedia,
+                                isPopular: menu.populer,
+                                inCart: line != null,
+                                cartLine: line,
+                                onTap: menu.tersedia
+                                    ? () => _bukaDetail(menu)
+                                    : null,
+                                onAdd: menu.tersedia
+                                    ? () => _tambahKeKeranjang(menu)
+                                    : null,
+                              );
+                            }, childCount: hasil.length),
                           ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final menu = hasil[index];
-                        return MenuCard(
-                          imageUrl: menu.imageUrl,
-                          name: menu.nama,
-                          portion: menu.takaran,
-                          price: menu.harga,
-                          isAvailable: menu.tersedia,
-                          isPopular: menu.populer,
-                          onTap: menu.tersedia ? () => _bukaDetail(menu) : null,
-                          onAdd: menu.tersedia
-                              ? () => _tambahKeKeranjang(menu)
-                              : null,
                         );
-                      }, childCount: hasil.length),
-                    ),
+                    },
                   ),
           ),
         ],
@@ -228,7 +244,10 @@ class _MenuPageState extends State<MenuPage>
                 ),
                 selected: isAktif,
                 onSelected: (_) {
-                  setState(() => _kategoriDipilih = kategori);
+                  setState(() {
+                    // Toggle: ketuk kategori yang sama → reset ke "Semua"
+                    _kategoriDipilih = isAktif ? 'Semua' : kategori;
+                  });
                   _pudarkanHasil();
                 },
                 backgroundColor: AppColors.surfaceSoft,

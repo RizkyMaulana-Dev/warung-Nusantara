@@ -5,9 +5,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants.dart';
+import '../../state/alamat_store.dart';
+import '../../state/loyalty_point_store.dart';
+import '../../state/metode_bayar_store.dart';
+import '../../state/pengaturan_store.dart';
 import '../cabang/cabang_model.dart';
 import '../cabang/cabang_service.dart';
-import '../login/login_page.dart';
 import '../main/main_shell.dart';
 import '../welcome/welcome_page.dart';
 
@@ -45,24 +48,32 @@ class _SplashPageState extends State<SplashPage> {
       _timerSafety?.cancel();
       if (!mounted) return;
 
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 4));
       if (!mounted) return;
 
-      final isFirstLaunch = prefs.getBool('is_first_launch') ?? true;
+      // Baca status sesi lebih dulu supaya routing tidak tertahan oleh
+      // pemuatan store preferensi yang lambat.
       final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
       final cabangTersimpan = _cabangTersimpan(prefs);
 
+      // Muat preferensi tersimpan (alamat, metode bayar, poin, pengaturan)
+      // paralel. Dibatasi timeout agar splash tidak macet bila store lambat.
+      try {
+        await Future.wait([
+          AlamatStore.instance.muat(),
+          MetodeBayarStore.instance.muat(),
+          LoyaltyPointStore.instance.muat(),
+          PengaturanStore.instance.muat(),
+        ]).timeout(const Duration(seconds: 3));
+      } catch (e) {
+        debugPrint('Splash muat store error: $e');
+      }
       if (!mounted) return;
 
       final navigator = Navigator.of(context);
 
-      if (isFirstLaunch) {
-        navigator.pushReplacement(
-          MaterialPageRoute(builder: (_) => const WelcomePage()),
-        );
-        return;
-      }
-
+      // Sudah login → langsung Beranda.
       if (isLoggedIn) {
         navigator.pushReplacement(
           MaterialPageRoute(
@@ -72,15 +83,16 @@ class _SplashPageState extends State<SplashPage> {
         return;
       }
 
+      // Belum login → selalu lewat Welcome dulu, lalu Login.
       navigator.pushReplacement(
         MaterialPageRoute(
-          builder: (_) => LoginPage(cabangTerpilih: cabangTersimpan),
+          builder: (_) => WelcomePage(cabangTerpilih: cabangTersimpan),
         ),
       );
     } catch (e, st) {
       // Log supaya terlihat di logcat / flutter logs.
       debugPrint('Splash _cekSesi error: $e\n$st');
-      // Fallback: coba navigasi ke Welcome (paling aman untuk first launch).
+      // Fallback default: belum login → Welcome (bukan langsung Login).
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const WelcomePage()),
@@ -91,7 +103,7 @@ class _SplashPageState extends State<SplashPage> {
 
   void _paksaNavigasi() {
     if (!mounted) return;
-    // Jika masih di splash setelah 6 dtk, paksa ke Welcome.
+    // Jika masih di splash setelah 6 dtk, tampilkan Welcome (default belum login).
     debugPrint('Splash timeout 6s — paksa navigasi ke Welcome');
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const WelcomePage()),

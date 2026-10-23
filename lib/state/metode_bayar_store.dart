@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MetodeBayarData {
   final String id;
@@ -21,12 +24,30 @@ class MetodeBayarData {
       utama: utama ?? this.utama,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'nama': nama,
+    'detail': detail,
+    'utama': utama,
+  };
+
+  factory MetodeBayarData.fromJson(Map<String, dynamic> json) {
+    return MetodeBayarData(
+      id: json['id'] as String? ?? '',
+      nama: json['nama'] as String? ?? '',
+      detail: json['detail'] as String? ?? '',
+      utama: json['utama'] as bool? ?? false,
+    );
+  }
 }
 
 class MetodeBayarStore extends ChangeNotifier {
   MetodeBayarStore._();
 
   static final MetodeBayarStore instance = MetodeBayarStore._();
+
+  static const _kunci = 'metode_bayar_daftar';
 
   final List<MetodeBayarData> _daftar = [
     const MetodeBayarData(
@@ -56,6 +77,39 @@ class MetodeBayarStore extends ChangeNotifier {
     return _daftar.isEmpty ? null : _daftar.first;
   }
 
+  /// Muat daftar metode bayar tersimpan dari penyimpanan lokal.
+  Future<void> muat() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kunci);
+      if (raw == null || raw.isEmpty) return;
+      final data = jsonDecode(raw) as List<dynamic>;
+      final hasil = data
+          .map((e) => MetodeBayarData.fromJson(e as Map<String, dynamic>))
+          .where((metode) => metode.id.isNotEmpty)
+          .toList();
+      if (hasil.isEmpty) return;
+      _daftar
+        ..clear()
+        ..addAll(hasil);
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('MetodeBayarStore.muat error: $e\n$st');
+    }
+  }
+
+  Future<void> _simpan() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _kunci,
+        jsonEncode(_daftar.map((metode) => metode.toJson()).toList()),
+      );
+    } catch (e, st) {
+      debugPrint('MetodeBayarStore._simpan error: $e\n$st');
+    }
+  }
+
   void tambah({required String nama, required String detail}) {
     _daftar.add(
       MetodeBayarData(
@@ -68,6 +122,7 @@ class MetodeBayarStore extends ChangeNotifier {
       ),
     );
     notifyListeners();
+    _simpan();
   }
 
   void jadikanUtama(String id) {
@@ -77,6 +132,7 @@ class MetodeBayarStore extends ChangeNotifier {
       _daftar[i] = _daftar[i].copyWith(utama: i == index);
     }
     notifyListeners();
+    _simpan();
   }
 
   void hapus(String id) {
@@ -88,5 +144,6 @@ class MetodeBayarStore extends ChangeNotifier {
       _daftar[0] = _daftar[0].copyWith(utama: true);
     }
     notifyListeners();
+    _simpan();
   }
 }

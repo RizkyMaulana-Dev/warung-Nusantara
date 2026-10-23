@@ -11,11 +11,18 @@ import '../cabang/cabang_model.dart';
 import '../cart/cart_page.dart';
 
 /// Detail menu: gambar, deskripsi, topping/addon, jumlah, dan catatan.
+/// Bisa dipakai untuk menambah item baru atau mengedit item yang sudah ada di keranjang.
 class DetailMenuPage extends StatefulWidget {
   final MenuProduk menu;
   final Cabang? cabangTerpilih;
+  final CartLine? editLine;
 
-  const DetailMenuPage({super.key, required this.menu, this.cabangTerpilih});
+  const DetailMenuPage({
+    super.key,
+    required this.menu,
+    this.cabangTerpilih,
+    this.editLine,
+  });
 
   @override
   State<DetailMenuPage> createState() => _DetailMenuPageState();
@@ -25,15 +32,31 @@ class _DetailMenuPageState extends State<DetailMenuPage> {
   final Map<String, Set<String>> _pilihan = {};
   final TextEditingController _catatanController = TextEditingController();
   int _jumlah = 1;
+  bool _isEditing = false;
 
   MenuProduk get _menu => widget.menu;
 
   @override
   void initState() {
     super.initState();
-    for (final grup in _menu.addon) {
-      if (!grup.multiPilih && grup.opsi.isNotEmpty) {
-        _pilihan[grup.id] = {grup.opsiAwal.id};
+    _isEditing = widget.editLine != null;
+    if (_isEditing) {
+      // Pre-fill from existing cart line
+      final line = widget.editLine!;
+      _jumlah = line.jumlah;
+      _catatanController.text = line.catatan;
+      for (final opsi in line.addon) {
+        for (final grup in _menu.addon) {
+          if (grup.opsi.any((o) => o.id == opsi.id)) {
+            _pilihan.putIfAbsent(grup.id, () => <String>{}).add(opsi.id);
+          }
+        }
+      }
+    } else {
+      for (final grup in _menu.addon) {
+        if (!grup.multiPilih && grup.opsi.isNotEmpty) {
+          _pilihan[grup.id] = {grup.opsiAwal.id};
+        }
       }
     }
   }
@@ -96,33 +119,47 @@ class _DetailMenuPageState extends State<DetailMenuPage> {
       return;
     }
 
-    CartStore.instance.tambah(
-      _menu,
-      addon: _addonTerpilih,
-      catatan: _catatanController.text,
-      jumlah: _jumlah,
-    );
+    if (_isEditing) {
+      CartStore.instance.perbarui(
+        widget.editLine!.id,
+        addon: _addonTerpilih,
+        catatan: _catatanController.text,
+      );
+      showAppMessage(context, '${_menu.nama} diperbarui.');
+      Navigator.of(context).pop();
+    } else {
+      CartStore.instance.tambah(
+        _menu,
+        addon: _addonTerpilih,
+        catatan: _catatanController.text,
+        jumlah: _jumlah,
+      );
 
-    final navigator = Navigator.of(context, rootNavigator: true);
-    showAppMessage(
-      context,
-      '${_menu.nama} masuk keranjang.',
-      actionLabel: 'Lihat',
-      onAction: () {
-        navigator.push(
-          MaterialPageRoute(
-            builder: (_) => CartPage(cabangTerpilih: widget.cabangTerpilih),
-          ),
-        );
-      },
-    );
+      final navigator = Navigator.of(context, rootNavigator: true);
+      showAppMessage(
+        context,
+        '${_menu.nama} masuk keranjang.',
+        actionLabel: 'Lihat',
+        onAction: () {
+          navigator.push(
+            MaterialPageRoute(
+              builder: (_) => CartPage(cabangTerpilih: widget.cabangTerpilih),
+            ),
+          );
+        },
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_menu.nama, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(
+          _isEditing ? 'Edit $_menu.nama' : _menu.nama,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -267,7 +304,7 @@ class _DetailMenuPageState extends State<DetailMenuPage> {
                                 ),
                               ),
                             ),
-                            _buildJumlahStepper(),
+                            if (!_isEditing) _buildJumlahStepper(),
                           ],
                         ),
                       ],
@@ -282,7 +319,7 @@ class _DetailMenuPageState extends State<DetailMenuPage> {
       bottomNavigationBar: BottomActionBar(
         keterangan: 'Total',
         nilai: formatRupiah(_total),
-        tombolText: 'Tambah ke keranjang',
+        tombolText: _isEditing ? 'Simpan perubahan' : 'Tambah ke keranjang',
         onTombolPressed: _tambahKeKeranjang,
       ),
     );

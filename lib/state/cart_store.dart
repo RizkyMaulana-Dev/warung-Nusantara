@@ -136,6 +136,25 @@ class CartStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Ubah addon & catatan sebuah baris (jumlah tidak berubah).
+  void perbarui(
+    String id, {
+    List<AddonOption> addon = const [],
+    String catatan = '',
+  }) {
+    final index = _lines.indexWhere((line) => line.id == id);
+    if (index < 0) return;
+    final line = _lines[index];
+    _lines[index] = CartLine(
+      id: line.id,
+      produk: line.produk,
+      addon: List.unmodifiable(addon),
+      catatan: catatan.trim(),
+      jumlah: line.jumlah,
+    );
+    notifyListeners();
+  }
+
   void kosongkan() {
     if (_lines.isEmpty) return;
     _lines.clear();

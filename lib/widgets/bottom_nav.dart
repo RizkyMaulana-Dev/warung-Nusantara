@@ -49,6 +49,9 @@ final List<BottomNavItemData> bottomNavItems = [
 /// Navigasi bawah: latar primary, 4 item rata sama.
 /// Diberi jarak dari tepi bawah perangkat agar tidak menempel
 /// ke gesture bar / sudut layar.
+///
+/// Desain: floating capsule — radius penuh, margin aman layar,
+/// tanpa bayangan sehingga ikon tombol tetap rapi.
 class BottomNav extends StatelessWidget {
   final BottomNavItem activeItem;
   final ValueChanged<BottomNavItem> onItemTapped;
@@ -61,78 +64,91 @@ class BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
+    final insets = MediaQuery.paddingOf(context);
+
+    return Padding(
+      // Floating: tidak menempel di tepi layar, ruang aman di bawah.
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.s20,
+        0,
+        AppSpacing.s20,
+        insets.bottom + AppSpacing.s12,
       ),
-      child: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.only(bottom: 6),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          child: SizedBox(
-            height: AppSize.bottomNavHeight,
-            child: Row(
-              children: bottomNavItems.map((itemData) {
-                final isActive = activeItem == itemData.item;
-                return Expanded(
-                  child: Semantics(
-                    button: true,
-                    selected: isActive,
-                    label: itemData.label,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => onItemTapped(itemData.item),
-                      child: SizedBox(
-                        height: AppSize.bottomNavHeight,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              isActive ? itemData.activeIcon : itemData.icon,
-                              size: 20,
-                              color: isActive
-                                  ? Colors.white
-                                  : AppColors.onPrimaryMuted,
-                            ),
-                            const SizedBox(height: 2),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  itemData.label,
-                                  maxLines: 1,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: isActive
-                                        ? AppText.w800
-                                        : AppText.w600,
-                                    color: isActive
-                                        ? Colors.white
-                                        : AppColors.onPrimaryMuted,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+      // Tanpa Center: Center akan mengisi seluruh tinggi slot
+      // bottomNavigationBar sehingga body jadi 0 tinggi.
+      child: Container(
+        height: 60,
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          // Capsule: radius penuh (semua sisi).
+          borderRadius: BorderRadius.circular(30),
+          // Tanpa bayangan seperti diminta.
+        ),
+        child: Row(
+          children: [
+            for (final item in bottomNavItems)
+              Expanded(
+                child: _ItemNav(
+                  item: item,
+                  selected: activeItem == item.item,
+                  onTap: () => onItemTapped(item.item),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Item navigasi individual di dalam capsule.
+class _ItemNav extends StatelessWidget {
+  final BottomNavItemData item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ItemNav({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: item.label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                selected ? item.activeIcon : item.icon,
+                size: 20,
+                color: selected ? Colors.white : AppColors.onPrimaryMuted,
+              ),
+              const SizedBox(height: 2),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: selected ? AppText.w800 : AppText.w600,
+                      color: selected ? Colors.white : AppColors.onPrimaryMuted,
                     ),
                   ),
-                );
-              }).toList(),
-            ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
