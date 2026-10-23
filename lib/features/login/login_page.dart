@@ -63,31 +63,34 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!mounted) return;
 
-    // Simulasi sukses (ganti validasi asli)
-    final prefs = await SharedPreferences.getInstance();
-    final email = _emailController.text.trim();
-    await prefs.setBool('is_logged_in', true);
-    await prefs.setString('email', email);
-    await prefs.setBool('ingat_saya', _ingatSaya);
-    if (_ingatSaya) {
-      await prefs.setString('email_tersimpan', email);
-    } else {
-      await prefs.remove('email_tersimpan');
-    }
-    final namaTersimpan = prefs.getString('nama_pengguna');
-    if (namaTersimpan == null || namaTersimpan.trim().isEmpty) {
-      await prefs.setString('nama_pengguna', 'Pengguna Contoh');
-    }
-
-    if (!mounted) return;
-
-    setState(() => _isLoading = false);
-
+    // Navigasi DULU agar SharedPreferences yang lambat/hang di HP
+    // tidak pernah menahan pengguna di Login.
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => MainShell(cabangTerpilih: widget.cabangTerpilih),
       ),
     );
+
+    // Simpan preferensi setelahnya (tidak menahan UI).
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 5));
+      final email = _emailController.text.trim();
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setString('email', email);
+      await prefs.setBool('ingat_saya', _ingatSaya);
+      if (_ingatSaya) {
+        await prefs.setString('email_tersimpan', email);
+      } else {
+        await prefs.remove('email_tersimpan');
+      }
+      final namaTersimpan = prefs.getString('nama_pengguna');
+      if (namaTersimpan == null || namaTersimpan.trim().isEmpty) {
+        await prefs.setString('nama_pengguna', 'Pengguna Contoh');
+      }
+    } catch (e, st) {
+      debugPrint('Login prefs save (non-blocking): $e\n$st');
+    }
   }
 
   Future<void> _masukGoogle() async {
@@ -95,25 +98,29 @@ class _LoginPageState extends State<LoginPage> {
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_logged_in', true);
-    final namaTersimpan = prefs.getString('nama_pengguna');
-    if (namaTersimpan == null || namaTersimpan.trim().isEmpty) {
-      await prefs.setString('nama_pengguna', 'Pengguna Google');
-    }
-    final email = _emailController.text.trim();
-    await prefs.setString(
-      'email',
-      email.isEmpty ? 'pengguna@gmail.com' : email,
-    );
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    // Navigasi DULU; preferensi disimpan setelahnya tanpa menahan UI.
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => MainShell(cabangTerpilih: widget.cabangTerpilih),
       ),
     );
+
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 5));
+      await prefs.setBool('is_logged_in', true);
+      final namaTersimpan = prefs.getString('nama_pengguna');
+      if (namaTersimpan == null || namaTersimpan.trim().isEmpty) {
+        await prefs.setString('nama_pengguna', 'Pengguna Google');
+      }
+      final email = _emailController.text.trim();
+      await prefs.setString(
+        'email',
+        email.isEmpty ? 'pengguna@gmail.com' : email,
+      );
+    } catch (e, st) {
+      debugPrint('Login Google prefs save (non-blocking): $e\n$st');
+    }
   }
 
   @override

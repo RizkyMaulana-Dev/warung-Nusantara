@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants.dart';
-import '../../core/messages.dart';
 import '../../widgets/app_image.dart';
 import '../../widgets/button.dart';
 import '../cabang/cabang_service.dart';
@@ -166,27 +165,27 @@ class _WelcomePageState extends State<WelcomePage> {
     if (_isMemulai) return;
     setState(() => _isMemulai = true);
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('is_first_launch', false);
+    if (!mounted) return;
 
-      // Simpan cabang default (cabang-1) bila belum ada; user bisa ganti
-      // nanti lewat Profil → Ganti Cabang.
+    // Navigasi DULU agar SharedPreferences yang lambat/hang di HP
+    // tidak pernah menahan pengguna di Welcome.
+    final cabangTerpilih = CabangService().getCabangById('cabang-1');
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => LoginPage(cabangTerpilih: cabangTerpilih),
+      ),
+    );
+
+    // Simpan preferensi setelahnya (tidak menahan UI). Timeout opsional.
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 5));
+      await prefs.setBool('is_first_launch', false);
       final cabangId = prefs.getString('cabang_id') ?? 'cabang-1';
       await prefs.setString('cabang_id', cabangId);
-
-      if (!mounted) return;
-
-      final cabangTerpilih = CabangService().getCabangById(cabangId);
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => LoginPage(cabangTerpilih: cabangTerpilih),
-        ),
-      );
     } catch (e, st) {
-      debugPrint('Welcome _mulai error: $e\n$st');
-      if (mounted) setState(() => _isMemulai = false);
-      showAppMessage(context, 'Gagal menyimpan. Ketuk Mulai lagi.');
+      // Navigasi sudah jalan; hanya preferensi yang tertunda.
+      debugPrint('Welcome prefs save (non-blocking): $e\n$st');
     }
   }
 }

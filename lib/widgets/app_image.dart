@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/constants.dart';
 
-/// Gambar jaringan dengan placeholder dan fallback lokal.
+/// Gambar jaringan dengan placeholder, cache decode kecil, dan fallback lokal.
 class AppImage extends StatelessWidget {
   final String url;
   final BoxFit fit;
@@ -10,6 +10,8 @@ class AppImage extends StatelessWidget {
   final double? height;
   final IconData fallbackIcon;
   final double fallbackIconSize;
+  final int cacheWidth;
+  final int cacheHeight;
 
   const AppImage({
     super.key,
@@ -19,6 +21,8 @@ class AppImage extends StatelessWidget {
     this.height,
     this.fallbackIcon = Icons.restaurant,
     this.fallbackIconSize = 28,
+    this.cacheWidth = 512,
+    this.cacheHeight = 512,
   });
 
   @override
@@ -30,6 +34,8 @@ class AppImage extends StatelessWidget {
       width: width,
       height: height,
       fit: fit,
+      cacheWidth: cacheWidth,
+      cacheHeight: cacheHeight,
       loadingBuilder: (context, child, progress) {
         if (progress == null) return child;
         return Container(
@@ -38,10 +44,10 @@ class AppImage extends StatelessWidget {
           color: AppColors.surfaceSoft,
           alignment: Alignment.center,
           child: const SizedBox(
-            width: 20,
-            height: 20,
+            width: 18,
+            height: 18,
             child: CircularProgressIndicator(
-              strokeWidth: 2,
+              strokeWidth: 1.5,
               color: AppColors.primary,
             ),
           ),

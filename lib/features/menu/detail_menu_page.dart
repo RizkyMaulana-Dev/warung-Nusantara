@@ -141,10 +141,12 @@ class _DetailMenuPageState extends State<DetailMenuPage> {
                         .clamp(190.0, 280.0)
                         .toDouble(),
                     child: AppImage(
-                      url: _menu.imageUrl,
+                      url: fotoUkuran(_menu.imageUrl, 600),
                       width: double.infinity,
                       height: double.infinity,
                       fallbackIconSize: 64,
+                      cacheWidth: 600,
+                      cacheHeight: 600,
                     ),
                   ),
                   Padding(

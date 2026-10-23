@@ -101,6 +101,7 @@ class _MenuPageState extends State<MenuPage>
             backgroundColor: Colors.white,
             iconColor: AppColors.primary,
           ),
+          const SizedBox(width: AppSpacing.s8),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.s12),
             child: CartIconButton(

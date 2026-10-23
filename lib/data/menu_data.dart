@@ -75,9 +75,21 @@ class BannerPromo {
 }
 
 const String _unsplash = 'https://images.unsplash.com/';
-const String _imageQuery = '?auto=format&fit=crop&w=900&q=80';
+const String _imageQuery = '?auto=format&fit=crop&w=400&q=70';
 
 String _foto(String id) => '$_unsplash$id$_imageQuery';
+
+/// URL gambar dengan lebar baru — untuk halaman detail/banner yang lebih lebar
+/// daripada thumbnail daftar menu. Mendukung pola Unsplash (w=数字) dan
+/// Wikimedia Commons (/thumb/.../400px-nama.jpg).
+String fotoUkuran(String url, int lebar) {
+  var hasil = url.replaceAll(RegExp(r'[?&]w=\d+'), 'w=$lebar');
+  hasil = hasil.replaceAllMapped(
+    RegExp(r'/\d+px-'),
+    (m) => '/$lebar' 'px-',
+  );
+  return hasil;
+}
 
 const List<String> kategoriMenu = [
   'Semua',
@@ -349,14 +361,14 @@ const List<BannerPromo> bannerPromo = [
     label: 'PROMO HARI INI',
     judul: 'Geprek pedas, harga bersahabat',
     subjudul: 'Ayam Geprek Spesial mulai Rp 22.000',
-    imageUrl: 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=600&q=75',
     menuId: 'ayam-geprek',
   ),
   BannerPromo(
     label: 'PAKET MAKAN SIANG',
     judul: 'Nasi goreng kampung bikin kenyang',
     subjudul: 'Tambahkan telur ceplok hanya Rp 4.000',
-    imageUrl: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=75',
     menuId: 'nasi-goreng',
   ),
   BannerPromo(
