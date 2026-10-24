@@ -7,7 +7,7 @@ import '../../state/metode_bayar_store.dart';
 import '../../widgets/button.dart';
 import '../../widgets/empty_state.dart';
 
-/// Metode pembayaran tersimpan: pilih utama, tambah, dan hapus.
+/// Metode pembayaran tersimpan: pilih utama, tambah, ubah, dan hapus.
 class MetodePembayaranPage extends StatelessWidget {
   const MetodePembayaranPage({super.key});
 
@@ -23,83 +23,37 @@ class MetodePembayaranPage extends StatelessWidget {
     return Icons.credit_card;
   }
 
-  Future<void> _tambah(BuildContext context) async {
-    final formKey = GlobalKey<FormState>();
-    final namaController = TextEditingController();
-    final detailController = TextEditingController();
-
-    final hasil = await showDialog<bool>(
+  Future<void> _bukaFormMetode(
+    BuildContext context, {
+    MetodeBayarData? metode,
+  }) async {
+    final hasil = await showDialog<Map<String, String>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Tambah metode'),
-        content: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: namaController,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama metode',
-                    hintText: 'Contoh: Dompet digital',
-                  ),
-                  validator: (nilai) {
-                    if (nilai == null || nilai.trim().isEmpty) {
-                      return 'Isi nama metode dulu, ya.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSpacing.s12),
-                TextFormField(
-                  controller: detailController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Keterangan',
-                    hintText: 'Contoh: Saldo dompet digital',
-                  ),
-                  validator: (nilai) {
-                    if (nilai == null || nilai.trim().isEmpty) {
-                      return 'Isi keterangan singkat dulu, ya.';
-                    }
-                    return null;
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() ?? false) {
-                Navigator.of(dialogContext).pop(true);
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+      builder: (_) => _MetodeFormDialog(metode: metode),
     );
 
-    if (hasil == true) {
-      MetodeBayarStore.instance.tambah(
-        nama: namaController.text,
-        detail: detailController.text,
-      );
+    if (hasil != null) {
+      if (metode == null) {
+        MetodeBayarStore.instance.tambah(
+          nama: hasil['nama']!,
+          detail: hasil['detail']!,
+        );
+      } else {
+        MetodeBayarStore.instance.ubah(
+          id: metode.id,
+          nama: hasil['nama']!,
+          detail: hasil['detail']!,
+        );
+      }
       if (context.mounted) {
-        showAppMessage(context, 'Metode pembayaran disimpan.');
+        showAppMessage(
+          context,
+          metode == null
+              ? 'Metode pembayaran disimpan.'
+              : 'Metode pembayaran diperbarui.',
+        );
       }
     }
-
-    namaController.dispose();
-    detailController.dispose();
   }
 
   Future<void> _hapus(BuildContext context, MetodeBayarData metode) async {
@@ -259,6 +213,19 @@ class MetodePembayaranPage extends StatelessWidget {
                       ),
                     ),
                     IconButton(
+                      tooltip: 'Ubah metode',
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      onPressed: () => _bukaFormMetode(context, metode: metode),
+                      constraints: const BoxConstraints(
+                        minWidth: AppSize.touchTarget,
+                        minHeight: AppSize.touchTarget,
+                      ),
+                    ),
+                    IconButton(
                       tooltip: 'Hapus metode',
                       icon: const Icon(
                         Icons.delete_outline,
@@ -287,9 +254,103 @@ class MetodePembayaranPage extends StatelessWidget {
         ),
         child: PrimaryButton(
           text: 'Tambah metode',
-          onPressed: () => _tambah(context),
+          onPressed: () => _bukaFormMetode(context),
         ),
       ),
+    );
+  }
+}
+
+class _MetodeFormDialog extends StatefulWidget {
+  final MetodeBayarData? metode;
+
+  const _MetodeFormDialog({this.metode});
+
+  @override
+  State<_MetodeFormDialog> createState() => _MetodeFormDialogState();
+}
+
+class _MetodeFormDialogState extends State<_MetodeFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _namaController;
+  late final TextEditingController _detailController;
+
+  @override
+  void initState() {
+    super.initState();
+    _namaController = TextEditingController(text: widget.metode?.nama ?? '');
+    _detailController = TextEditingController(
+      text: widget.metode?.detail ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _namaController.dispose();
+    _detailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.metode == null ? 'Tambah metode' : 'Ubah metode'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _namaController,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Nama metode',
+                  hintText: 'Contoh: Dompet digital',
+                ),
+                validator: (nilai) {
+                  if (nilai == null || nilai.trim().isEmpty) {
+                    return 'Isi nama metode dulu, ya.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.s12),
+              TextFormField(
+                controller: _detailController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Keterangan',
+                  hintText: 'Contoh: Saldo dompet digital',
+                ),
+                validator: (nilai) {
+                  if (nilai == null || nilai.trim().isEmpty) {
+                    return 'Isi keterangan singkat dulu, ya.';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        TextButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              Navigator.of(context).pop({
+                'nama': _namaController.text.trim(),
+                'detail': _detailController.text.trim(),
+              });
+            }
+          },
+          child: const Text('Simpan'),
+        ),
+      ],
     );
   }
 }

@@ -171,6 +171,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _tukarPoin() async {
     final store = LoyaltyPointStore.instance;
+    if (VoucherStore.instance.punyaVoucherPoin) {
+      showAppMessage(
+        context,
+        'Voucher tukar poin sudah ada di halaman Voucher.',
+      );
+      return;
+    }
     final konfirmasi = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -195,10 +202,17 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     if (konfirmasi == true) {
-      // Poin hilang langsung saat dipakai (100 poin → voucher Rp 10.000).
-      store.kurangi(100);
-      VoucherStore.instance.tambahVoucherPoin();
+      final ditambahkan = await VoucherStore.instance.tambahVoucherPoin();
       if (!mounted) return;
+      if (!ditambahkan) {
+        showAppMessage(
+          context,
+          'Voucher tukar poin sudah ada di halaman Voucher.',
+        );
+        return;
+      }
+      // Poin baru dipotong setelah voucher berhasil ditambahkan.
+      store.kurangi(100);
       showAppMessage(
         context,
         'Poin ditukar. Voucher Rp 10.000 ada di halaman Voucher.',

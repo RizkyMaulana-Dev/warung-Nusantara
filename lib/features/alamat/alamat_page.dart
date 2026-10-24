@@ -7,90 +7,40 @@ import '../../state/alamat_store.dart';
 import '../../widgets/button.dart';
 import '../../widgets/empty_state.dart';
 
-/// Daftar alamat pengantaran yang bisa ditambah, dijadikan utama, atau dihapus.
+/// Daftar alamat pengantaran yang bisa ditambah, diubah, dijadikan utama,
+/// atau dihapus.
 class AlamatPage extends StatelessWidget {
   const AlamatPage({super.key});
 
-  Future<void> _tambahAlamat(BuildContext context) async {
-    final formKey = GlobalKey<FormState>();
-    final labelController = TextEditingController();
-    final detailController = TextEditingController();
-
-    final hasil = await showDialog<bool>(
+  Future<void> _bukaFormAlamat(
+    BuildContext context, {
+    AlamatData? alamat,
+  }) async {
+    final hasil = await showDialog<Map<String, String>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Tambah alamat'),
-        content: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: labelController,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Label alamat',
-                    hintText: 'Contoh: Rumah',
-                  ),
-                  validator: (nilai) {
-                    if (nilai == null || nilai.trim().isEmpty) {
-                      return 'Isi label dulu, ya.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSpacing.s12),
-                TextFormField(
-                  controller: detailController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Alamat lengkap',
-                    hintText: 'Jalan, nomor rumah, patokan',
-                  ),
-                  validator: (nilai) {
-                    if (nilai == null || nilai.trim().isEmpty) {
-                      return 'Isi alamat lengkap dulu, ya.';
-                    }
-                    if (nilai.trim().length < 10) {
-                      return 'Tulis alamat lebih lengkap supaya kurir mudah menemukan.';
-                    }
-                    return null;
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() ?? false) {
-                Navigator.of(dialogContext).pop(true);
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+      builder: (_) => _AlamatFormDialog(alamat: alamat),
     );
 
-    if (hasil == true) {
-      AlamatStore.instance.tambah(
-        label: labelController.text,
-        detail: detailController.text,
-      );
+    if (hasil != null) {
+      if (alamat == null) {
+        AlamatStore.instance.tambah(
+          label: hasil['label']!,
+          detail: hasil['detail']!,
+        );
+      } else {
+        AlamatStore.instance.ubah(
+          id: alamat.id,
+          label: hasil['label']!,
+          detail: hasil['detail']!,
+        );
+      }
       if (context.mounted) {
-        showAppMessage(context, 'Alamat baru disimpan.');
+        showAppMessage(
+          context,
+          alamat == null ? 'Alamat baru disimpan.' : 'Alamat diperbarui.',
+        );
       }
     }
-
-    labelController.dispose();
-    detailController.dispose();
   }
 
   Future<void> _hapus(BuildContext context, AlamatData alamat) async {
@@ -203,6 +153,20 @@ class AlamatPage extends StatelessWidget {
                           ),
                         const SizedBox(width: AppSpacing.s4),
                         IconButton(
+                          tooltip: 'Ubah alamat',
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              _bukaFormAlamat(context, alamat: alamat),
+                          constraints: const BoxConstraints(
+                            minWidth: AppSize.touchTarget,
+                            minHeight: AppSize.touchTarget,
+                          ),
+                        ),
+                        IconButton(
                           tooltip: 'Hapus alamat',
                           icon: const Icon(
                             Icons.delete_outline,
@@ -259,9 +223,106 @@ class AlamatPage extends StatelessWidget {
         ),
         child: PrimaryButton(
           text: 'Tambah alamat',
-          onPressed: () => _tambahAlamat(context),
+          onPressed: () => _bukaFormAlamat(context),
         ),
       ),
+    );
+  }
+}
+
+class _AlamatFormDialog extends StatefulWidget {
+  final AlamatData? alamat;
+
+  const _AlamatFormDialog({this.alamat});
+
+  @override
+  State<_AlamatFormDialog> createState() => _AlamatFormDialogState();
+}
+
+class _AlamatFormDialogState extends State<_AlamatFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _labelController;
+  late final TextEditingController _detailController;
+
+  @override
+  void initState() {
+    super.initState();
+    _labelController = TextEditingController(text: widget.alamat?.label ?? '');
+    _detailController = TextEditingController(
+      text: widget.alamat?.detail ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _labelController.dispose();
+    _detailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.alamat == null ? 'Tambah alamat' : 'Ubah alamat'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _labelController,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Label alamat',
+                  hintText: 'Contoh: Rumah',
+                ),
+                validator: (nilai) {
+                  if (nilai == null || nilai.trim().isEmpty) {
+                    return 'Isi label dulu, ya.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.s12),
+              TextFormField(
+                controller: _detailController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Alamat lengkap',
+                  hintText: 'Jalan, nomor rumah, patokan',
+                ),
+                validator: (nilai) {
+                  if (nilai == null || nilai.trim().isEmpty) {
+                    return 'Isi alamat lengkap dulu, ya.';
+                  }
+                  if (nilai.trim().length < 10) {
+                    return 'Tulis alamat lebih lengkap supaya kurir mudah menemukan.';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        TextButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              Navigator.of(context).pop({
+                'label': _labelController.text.trim(),
+                'detail': _detailController.text.trim(),
+              });
+            }
+          },
+          child: const Text('Simpan'),
+        ),
+      ],
     );
   }
 }

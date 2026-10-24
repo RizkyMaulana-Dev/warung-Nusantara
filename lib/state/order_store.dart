@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/cart_store.dart';
 import 'notification_store.dart';
@@ -26,6 +28,22 @@ class OrderLine {
       opsi: line.opsiRingkas,
       jumlah: line.jumlah,
       hargaSatuan: line.hargaSatuan,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'nama': nama,
+    'opsi': opsi,
+    'jumlah': jumlah,
+    'hargaSatuan': hargaSatuan,
+  };
+
+  factory OrderLine.fromJson(Map<String, dynamic> json) {
+    return OrderLine(
+      nama: json['nama'] as String? ?? '',
+      opsi: json['opsi'] as String? ?? '',
+      jumlah: (json['jumlah'] as num?)?.toInt() ?? 0,
+      hargaSatuan: (json['hargaSatuan'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -94,12 +112,48 @@ class OrderData {
     return '${dua(waktu.day)}/${dua(waktu.month)}/${waktu.year} '
         '${dua(waktu.hour)}.${dua(waktu.minute)}';
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'waktu': waktu.toIso8601String(),
+    'lines': lines.map((line) => line.toJson()).toList(),
+    'subtotal': subtotal,
+    'ongkir': ongkir,
+    'diskon': diskon,
+    'total': total,
+    'alamat': alamat,
+    'pembayaran': pembayaran,
+    'cabang': cabang,
+    'status': status,
+  };
+
+  factory OrderData.fromJson(Map<String, dynamic> json) {
+    final linesRaw = json['lines'] as List<dynamic>? ?? const [];
+    return OrderData(
+      id: json['id'] as String? ?? '',
+      waktu:
+          DateTime.tryParse(json['waktu'] as String? ?? '') ?? DateTime.now(),
+      lines: linesRaw
+          .map((e) => OrderLine.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      subtotal: (json['subtotal'] as num?)?.toInt() ?? 0,
+      ongkir: (json['ongkir'] as num?)?.toInt() ?? 0,
+      diskon: (json['diskon'] as num?)?.toInt() ?? 0,
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      alamat: json['alamat'] as String? ?? '',
+      pembayaran: json['pembayaran'] as String? ?? '',
+      cabang: json['cabang'] as String? ?? '',
+      status: json['status'] as String? ?? 'Selesai',
+    );
+  }
 }
 
 class OrderStore extends ChangeNotifier {
   OrderStore._();
 
   static final OrderStore instance = OrderStore._();
+
+  static const _kunci = 'pesanan_daftar';
 
   /// Berapa lama pesanan berjalan sebelum otomatis jadi 'Diantar kurir'.
   /// Satu konstanta supaya bisa diperpendek saat pengujian.
@@ -119,6 +173,59 @@ class OrderStore extends ChangeNotifier {
   List<OrderData> get riwayat =>
       _orders.where((order) => order.selesai).toList();
 
+  /// Muat pesanan tersimpan, lalu lanjutkan timer pesanan yang masih dimasak.
+  ///
+  /// Pesanan yang waktunya sudah lewat langsung dipindah ke 'Diantar kurir'
+  /// dan dibuatkan satu notifikasi. Statusnya langsung disimpan supaya
+  /// notifikasi tidak muncul berulang setiap aplikasi dibuka.
+  Future<void> muat() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kunci);
+      if (raw == null || raw.isEmpty) return;
+
+      final data = jsonDecode(raw) as List<dynamic>;
+      final hasil = <OrderData>[];
+      for (final item in data) {
+        try {
+          final order = OrderData.fromJson(item as Map<String, dynamic>);
+          if (order.id.isNotEmpty) hasil.add(order);
+        } catch (e, st) {
+          debugPrint('OrderStore.muat item error: $e\n$st');
+        }
+      }
+
+      _batalkanTimer();
+      _orders
+        ..clear()
+        ..addAll(hasil);
+
+      if (hasil.isEmpty) {
+        notifyListeners();
+        return;
+      }
+
+      final sekarang = DateTime.now();
+      final perluDiantar = <String>[];
+      for (final order in hasil) {
+        if (order.status != 'Sedang dimasak') continue;
+        final sisa = durasiDiantar - sekarang.difference(order.waktu);
+        if (sisa <= Duration.zero) {
+          perluDiantar.add(order.id);
+        } else {
+          _timer[order.id] = Timer(sisa, () => tandaiDiantar(order.id));
+        }
+      }
+
+      for (final id in perluDiantar) {
+        tandaiDiantar(id);
+      }
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('OrderStore.muat error: $e\n$st');
+    }
+  }
+
   void tambah(OrderData order) {
     _orders.insert(0, order);
     _catatNotifikasi(
@@ -132,6 +239,7 @@ class OrderStore extends ChangeNotifier {
     }
 
     notifyListeners();
+    _simpan();
   }
 
   /// Pesanan mulai diantar kurir (dipanggil timer atau simulasi kurir).
@@ -162,6 +270,7 @@ class OrderStore extends ChangeNotifier {
 
     _orders[index] = order.denganStatus(status);
     notifyListeners();
+    _simpan();
   }
 
   void selesaikan(String id) {
@@ -177,9 +286,10 @@ class OrderStore extends ChangeNotifier {
 
   void kosongkan() {
     _batalkanTimer();
-    if (_orders.isEmpty) return;
+    final sudahKosong = _orders.isEmpty;
     _orders.clear();
-    notifyListeners();
+    if (!sudahKosong) notifyListeners();
+    _simpan();
   }
 
   @override
@@ -202,12 +312,24 @@ class OrderStore extends ChangeNotifier {
     _timer.clear();
   }
 
+  Future<void> _simpan() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _kunci,
+        jsonEncode(_orders.map((order) => order.toJson()).toList()),
+      );
+    } catch (e, st) {
+      debugPrint('OrderStore._simpan error: $e\n$st');
+    }
+  }
+
   /// Satu tempat untuk membuat notifikasi, supaya teksnya tidak tersebar
   /// dan tidak pernah muncul dua kali.
   void _catatNotifikasi(String judul, String isi) {
     NotificationStore.instance.tambah(
       AppNotification(
-        id: 'notif-${_nomorNotifikasi++}',
+        id: 'notif-${DateTime.now().microsecondsSinceEpoch}-${_nomorNotifikasi++}',
         judul: judul,
         isi: isi,
         waktu: DateTime.now(),

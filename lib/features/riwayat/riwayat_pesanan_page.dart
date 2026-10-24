@@ -7,7 +7,7 @@ import '../../widgets/order_card.dart';
 import '../cabang/cabang_model.dart';
 import '../tracking/tracking_page.dart';
 
-/// Riwayat semua pesanan pengguna.
+/// Riwayat pesanan yang sudah selesai.
 class RiwayatPesananPage extends StatelessWidget {
   final Cabang? cabangTerpilih;
 
@@ -25,7 +25,7 @@ class RiwayatPesananPage extends StatelessWidget {
       body: AnimatedBuilder(
         animation: OrderStore.instance,
         builder: (context, _) {
-          final daftar = OrderStore.instance.semua;
+          final daftar = OrderStore.instance.riwayat;
           if (daftar.isEmpty) {
             return const EmptyState(
               icon: Icons.history,

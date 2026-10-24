@@ -16,11 +16,11 @@ class AlamatData {
     this.utama = false,
   });
 
-  AlamatData copyWith({bool? utama}) {
+  AlamatData copyWith({String? label, String? detail, bool? utama}) {
     return AlamatData(
       id: id,
-      label: label,
-      detail: detail,
+      label: label ?? this.label,
+      detail: detail ?? this.detail,
       utama: utama ?? this.utama,
     );
   }
@@ -113,6 +113,21 @@ class AlamatStore extends ChangeNotifier {
       utama: _daftar.isEmpty,
     );
     _daftar.add(baru);
+    notifyListeners();
+    _simpan();
+  }
+
+  void ubah({
+    required String id,
+    required String label,
+    required String detail,
+  }) {
+    final index = _daftar.indexWhere((alamat) => alamat.id == id);
+    if (index < 0) return;
+    _daftar[index] = _daftar[index].copyWith(
+      label: label.trim(),
+      detail: detail.trim(),
+    );
     notifyListeners();
     _simpan();
   }

@@ -16,11 +16,11 @@ class MetodeBayarData {
     this.utama = false,
   });
 
-  MetodeBayarData copyWith({bool? utama}) {
+  MetodeBayarData copyWith({String? nama, String? detail, bool? utama}) {
     return MetodeBayarData(
       id: id,
-      nama: nama,
-      detail: detail,
+      nama: nama ?? this.nama,
+      detail: detail ?? this.detail,
       utama: utama ?? this.utama,
     );
   }
@@ -120,6 +120,23 @@ class MetodeBayarStore extends ChangeNotifier {
             : detail.trim(),
         utama: _daftar.isEmpty,
       ),
+    );
+    notifyListeners();
+    _simpan();
+  }
+
+  void ubah({
+    required String id,
+    required String nama,
+    required String detail,
+  }) {
+    final index = _daftar.indexWhere((metode) => metode.id == id);
+    if (index < 0) return;
+    _daftar[index] = _daftar[index].copyWith(
+      nama: nama.trim(),
+      detail: detail.trim().isEmpty
+          ? 'Metode pembayaran tersimpan'
+          : detail.trim(),
     );
     notifyListeners();
     _simpan();

@@ -1,4 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+const String _kunciVoucherTambahan = 'voucher_tambahan';
 
 class VoucherData {
   final String kode;
@@ -14,6 +19,22 @@ class VoucherData {
     required this.minimalBelanja,
     required this.potongan,
   });
+
+  Map<String, dynamic> toJson() => {
+    'kode': kode,
+    'judul': judul,
+    'keterangan': keterangan,
+    'minimalBelanja': minimalBelanja,
+    'potongan': potongan,
+  };
+
+  factory VoucherData.fromJson(Map<String, dynamic> json) => VoucherData(
+    kode: json['kode'] as String? ?? '',
+    judul: json['judul'] as String? ?? '',
+    keterangan: json['keterangan'] as String? ?? '',
+    minimalBelanja: (json['minimalBelanja'] as num?)?.toInt() ?? 0,
+    potongan: (json['potongan'] as num?)?.toInt() ?? 0,
+  );
 }
 
 const List<VoucherData> daftarVoucher = [
@@ -66,8 +87,12 @@ class VoucherStore extends ChangeNotifier {
   bool get punyaVoucherPoin =>
       _tambahan.any((voucher) => voucher.kode == 'POIN10');
 
-  void tambahVoucherPoin() {
-    if (punyaVoucherPoin) return;
+  /// Menambahkan voucher hasil tukar poin.
+  ///
+  /// Mengembalikan `false` kalau voucher `POIN10` sudah dimiliki supaya
+  /// pemanggil tidak memotong poin lagi.
+  Future<bool> tambahVoucherPoin() async {
+    if (punyaVoucherPoin) return false;
     _tambahan.add(
       const VoucherData(
         kode: 'POIN10',
@@ -78,6 +103,50 @@ class VoucherStore extends ChangeNotifier {
       ),
     );
     notifyListeners();
+    await _simpan();
+    return true;
+  }
+
+  /// Memuat voucher hasil tukar poin dari penyimpanan lokal.
+  Future<void> muat() async {
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 5),
+      );
+      final mentah = prefs.getString(_kunciVoucherTambahan);
+      final daftar = <VoucherData>[];
+      if (mentah != null) {
+        final data = jsonDecode(mentah);
+        if (data is List) {
+          for (final item in data) {
+            if (item is Map<String, dynamic>) {
+              final voucher = VoucherData.fromJson(item);
+              if (voucher.kode.isNotEmpty) daftar.add(voucher);
+            }
+          }
+        }
+      }
+      _tambahan
+        ..clear()
+        ..addAll(daftar);
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('VoucherStore.muat error: $e\n$st');
+    }
+  }
+
+  Future<void> _simpan() async {
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 5),
+      );
+      await prefs.setString(
+        _kunciVoucherTambahan,
+        jsonEncode(_tambahan.map((voucher) => voucher.toJson()).toList()),
+      );
+    } catch (e, st) {
+      debugPrint('VoucherStore._simpan error: $e\n$st');
+    }
   }
 
   void pilih(VoucherData voucher) {

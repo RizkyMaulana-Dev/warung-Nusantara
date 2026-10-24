@@ -8,7 +8,10 @@ import '../../core/constants.dart';
 import '../../state/alamat_store.dart';
 import '../../state/loyalty_point_store.dart';
 import '../../state/metode_bayar_store.dart';
+import '../../state/notification_store.dart';
+import '../../state/order_store.dart';
 import '../../state/pengaturan_store.dart';
+import '../../state/voucher_store.dart';
 import '../cabang/cabang_model.dart';
 import '../cabang/cabang_service.dart';
 import '../main/main_shell.dart';
@@ -48,8 +51,9 @@ class _SplashPageState extends State<SplashPage> {
       _timerSafety?.cancel();
       if (!mounted) return;
 
-      final prefs = await SharedPreferences.getInstance()
-          .timeout(const Duration(seconds: 4));
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 4),
+      );
       if (!mounted) return;
 
       // Baca status sesi lebih dulu supaya routing tidak tertahan oleh
@@ -65,7 +69,13 @@ class _SplashPageState extends State<SplashPage> {
           MetodeBayarStore.instance.muat(),
           LoyaltyPointStore.instance.muat(),
           PengaturanStore.instance.muat(),
+          VoucherStore.instance.muat(),
         ]).timeout(const Duration(seconds: 3));
+
+        // Notifikasi dimuat lebih dulu supaya notifikasi yang dibuat saat
+        // memulihkan pesanan aktif tidak tertimpa proses muat.
+        await NotificationStore.instance.muat();
+        await OrderStore.instance.muat();
       } catch (e) {
         debugPrint('Splash muat store error: $e');
       }
@@ -105,9 +115,9 @@ class _SplashPageState extends State<SplashPage> {
     if (!mounted) return;
     // Jika masih di splash setelah 6 dtk, tampilkan Welcome (default belum login).
     debugPrint('Splash timeout 6s — paksa navigasi ke Welcome');
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const WelcomePage()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const WelcomePage()));
   }
 
   Cabang? _cabangTersimpan(SharedPreferences prefs) {

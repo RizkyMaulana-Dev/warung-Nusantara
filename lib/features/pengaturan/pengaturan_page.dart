@@ -89,7 +89,8 @@ class _PengaturanPageState extends State<PengaturanPage> {
           _judulBagian('Aplikasi'),
           _buildSwitch(
             title: 'Hemat data',
-            subtitle: 'Muat gambar menu dengan kualitas lebih ringan.',
+            subtitle:
+                'Gambar dimuat lebih kecil dan ringan untuk koneksi terbatas.',
             value: _store.hematData,
             onChanged: _ubahHematData,
           ),
@@ -101,7 +102,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
               'Warung Nusantara',
               'Aplikasi pemesanan makanan untuk UMKM lokal. '
                   'Pesan menu favorit, pilih cabang terdekat, dan pantau '
-                  'status pesanan langsung dari HP.\n\nVersi 1.0.3',
+                  'status pesanan langsung dari HP.\n\nVersi 1.0.5',
             ),
           ),
           _buildInfoTile(
@@ -116,7 +117,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
           ),
           const Divider(height: 32, color: AppColors.divider),
           Text(
-            'Versi aplikasi 1.0.3',
+            'Versi aplikasi 1.0.5',
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
